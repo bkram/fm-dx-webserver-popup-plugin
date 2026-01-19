@@ -128,6 +128,13 @@
         agreeButton.className = 'popup-plugin-close';
         agreeButton.textContent = 'Okay';
         agreeButton.addEventListener('click', function () {
+            // Set localStorage so it doesn't show again
+            try {
+                localStorage.setItem('popup-dismissed', 'true');
+                console.log('[popup-plugin] Popup preference saved to localStorage.');
+            } catch (e) {
+                console.warn('[popup-plugin] Could not save to localStorage:', e);
+            }
             overlay.remove();
         });
 
@@ -150,6 +157,12 @@
     }
 
     function showPopupWhenReady() {
+        // Check if user has already dismissed this popup
+        if (localStorage.getItem('popup-dismissed') === 'true') {
+            console.log('[popup-plugin] User already dismissed popup, skipping.');
+            return;
+        }
+
         var text = (popupText || '').trim();
         if (!text) {
             console.log('[popup-plugin] No popup text configured.');
