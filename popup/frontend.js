@@ -5,17 +5,7 @@
         return;
     }
 
-    function getCookie(name) {
-        var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-        return match ? match[2] : null;
-    }
-
-    function setCookie(name, value, days) {
-        var expires = new Date(Date.now() + days * 864e5).toUTCString();
-        document.cookie = name + '=' + value + '; expires=' + expires + '; path=/';
-    }
-
-    if (getCookie('popupAcknowledged')) {
+    if (localStorage.getItem('popupAcknowledged')) {
         console.log('[popup-plugin] User already acknowledged, skipping popup.');
         return;
     }
@@ -149,8 +139,8 @@
         agreeButton.className = 'popup-plugin-close';
         agreeButton.textContent = 'Okay';
         agreeButton.addEventListener('click', function () {
-            setCookie('popupAcknowledged', '1', 365);
-            console.log('[popup-plugin] Popup acknowledged, cookie set.');
+            localStorage.setItem('popupAcknowledged', '1');
+            console.log('[popup-plugin] Popup acknowledged, saved to localStorage.');
             overlay.remove();
         });
 
@@ -173,12 +163,6 @@
     }
 
     function showPopupWhenReady() {
-        // Check if user has already dismissed this popup
-        if (localStorage.getItem('popup-dismissed') === 'true') {
-            console.log('[popup-plugin] User already dismissed popup, skipping.');
-            return;
-        }
-
         var text = (popupText || '').trim();
         if (!text) {
             console.log('[popup-plugin] No popup text configured.');
