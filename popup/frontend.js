@@ -1,4 +1,25 @@
 (function () {
+    var hostname = window.location.hostname.toLowerCase();
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+        console.log('[popup-plugin] Running on localhost, skipping popup.');
+        return;
+    }
+
+    function getCookie(name) {
+        var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? match[2] : null;
+    }
+
+    function setCookie(name, value, days) {
+        var expires = new Date(Date.now() + days * 864e5).toUTCString();
+        document.cookie = name + '=' + value + '; expires=' + expires + '; path=/';
+    }
+
+    if (getCookie('popupAcknowledged')) {
+        console.log('[popup-plugin] User already acknowledged, skipping popup.');
+        return;
+    }
+
     if (window.__popupPluginLoaded) {
         console.log('[popup-plugin] Already loaded, skipping.');
         return;
@@ -128,13 +149,8 @@
         agreeButton.className = 'popup-plugin-close';
         agreeButton.textContent = 'Okay';
         agreeButton.addEventListener('click', function () {
-            // Set localStorage so it doesn't show again
-            try {
-                localStorage.setItem('popup-dismissed', 'true');
-                console.log('[popup-plugin] Popup preference saved to localStorage.');
-            } catch (e) {
-                console.warn('[popup-plugin] Could not save to localStorage:', e);
-            }
+            setCookie('popupAcknowledged', '1', 365);
+            console.log('[popup-plugin] Popup acknowledged, cookie set.');
             overlay.remove();
         });
 
