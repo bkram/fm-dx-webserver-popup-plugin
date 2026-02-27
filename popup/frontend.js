@@ -1,25 +1,58 @@
 (function () {
-    if (window.__popupPluginLoaded) {
-        console.log('[popup-plugin] Already loaded, skipping.');
-        return;
-    }
-    window.__popupPluginLoaded = true;
-    console.log('[popup-plugin] Loaded.');
 
+    console.log('[popup-plugin] Loaded.');
     // Server-side configurable text; edit this string and reload the page.
+    var alwaysShopPopup = false; // Set to true to show popup on every visit
     var popupTitle = 'Announcement';
     var popupText = 'Welcome! This server uses a popup plugin for announcements.<br>'
         + 'You can edit this message in popup/frontend.js to share updates or notices with listeners.<br>'
         + 'Click "Okay" to continue.';
+    // End of server-side configurable text.
+    var storageKey = 'popupAcknowledged';
+    var styleId = 'popup-plugin-style';
+    var overlayId = 'popup-plugin-overlay';
+
+    var hostname = window.location.hostname.toLowerCase();
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+        console.log('[popup-plugin] Running on localhost, skipping popup.');
+        return;
+    }
+
+    if (!alwaysShopPopup) {
+        if (isPopupAcknowledged()) {
+            console.log('[popup-plugin] User already acknowledged, skipping popup.');
+            return;
+        }
+    }
+
+    window.__popupPluginLoaded = true;
+
+    function isPopupAcknowledged() {
+        try {
+            return Boolean(localStorage.getItem(storageKey));
+        } catch (error) {
+            console.log('[popup-plugin] Unable to read localStorage, continuing without saved state.');
+            return false;
+        }
+    }
+
+    function acknowledgePopup() {
+        try {
+            localStorage.setItem(storageKey, '1');
+            console.log('[popup-plugin] Popup acknowledged, saved to localStorage.');
+        } catch (error) {
+            console.log('[popup-plugin] Unable to write localStorage, acknowledgement not persisted.');
+        }
+    }
 
     function ensureStyles() {
-        if (document.getElementById('popup-plugin-style')) {
+        if (document.getElementById(styleId)) {
             console.log('[popup-plugin] Styles already present.');
             return;
         }
 
         var style = document.createElement('style');
-        style.id = 'popup-plugin-style';
+        style.id = styleId;
         style.type = 'text/css';
         style.textContent = [
             '.popup-plugin-overlay {',
@@ -99,8 +132,14 @@
     }
 
     function createPopup(text) {
+        if (document.getElementById(overlayId)) {
+            console.log('[popup-plugin] Popup already open, skipping duplicate render.');
+            return;
+        }
+
         console.log('[popup-plugin] Creating popup.');
         var overlay = document.createElement('div');
+        overlay.id = overlayId;
         overlay.className = 'popup-plugin-overlay';
         overlay.setAttribute('role', 'dialog');
         overlay.setAttribute('aria-modal', 'true');
@@ -127,16 +166,17 @@
         agreeButton.type = 'button';
         agreeButton.className = 'popup-plugin-close';
         agreeButton.textContent = 'Okay';
-        agreeButton.addEventListener('click', function () {
-            // Set localStorage so it doesn't show again
-            try {
-                localStorage.setItem('popup-dismissed', 'true');
-                console.log('[popup-plugin] Popup preference saved to localStorage.');
-            } catch (e) {
-                console.warn('[popup-plugin] Could not save to localStorage:', e);
+        function closePopup() {
+            if (!alwaysShopPopup) {
+                console.log('[popup-plugin] alwaysShopPopup is false; saving acknowledgement.');
+
+                acknowledgePopup();
+            } else {
+                console.log('[popup-plugin] alwaysShopPopup is true; not saving acknowledgement.');
             }
             overlay.remove();
-        });
+        }
+        agreeButton.addEventListener('click', closePopup);
 
         actions.appendChild(agreeButton);
         card.appendChild(titleBar);
@@ -157,12 +197,6 @@
     }
 
     function showPopupWhenReady() {
-        // Check if user has already dismissed this popup
-        if (localStorage.getItem('popup-dismissed') === 'true') {
-            console.log('[popup-plugin] User already dismissed popup, skipping.');
-            return;
-        }
-
         var text = (popupText || '').trim();
         if (!text) {
             console.log('[popup-plugin] No popup text configured.');
@@ -175,7 +209,7 @@
 
     if (document.readyState === 'loading') {
         console.log('[popup-plugin] Waiting for DOMContentLoaded.');
-        document.addEventListener('DOMContentLoaded', showPopupWhenReady);
+        document.addEventListener('DOMContentLoaded', showPopupWhenReady, { once: true });
     } else {
         showPopupWhenReady();
     }
